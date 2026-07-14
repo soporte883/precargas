@@ -17,6 +17,7 @@ dotenv.config(); // respaldo: también carga .env si existe
 import readline from 'node:readline';
 import bcrypt from 'bcryptjs';
 import { sql } from '../lib/db.js';
+import { ensureUsersSchema, normalizeRole } from '../lib/users.js';
 
 function question(query, { muted = false } = {}) {
   return new Promise((resolve) => {
@@ -35,14 +36,7 @@ function question(query, { muted = false } = {}) {
 
 async function main() {
   console.log('Creando tabla "users" si no existe...');
-  await sql`
-    CREATE TABLE IF NOT EXISTS users (
-      id            SERIAL PRIMARY KEY,
-      username      TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-    )
-  `;
+  await ensureUsersSchema();
   console.log('Tabla lista.\n');
 
   let seguir = true;
@@ -65,14 +59,23 @@ async function main() {
       continue;
     }
 
+    const roleInput = (await question('Rol (admin/user) [user]: ')).trim().toLowerCase();
+    const role = normalizeRole(roleInput || 'user');
+
+    const activeInput = (await question('¿Activo? (s/n) [s]: ')).trim().toLowerCase();
+    const isActive = !(activeInput === 'n' || activeInput === 'no');
+
     const passwordHash = await bcrypt.hash(password, 10);
     await sql`
-      INSERT INTO users (username, password_hash)
-      VALUES (${username}, ${passwordHash})
+      INSERT INTO users (username, password_hash, role, is_active)
+      VALUES (${username}, ${passwordHash}, ${role}, ${isActive})
       ON CONFLICT (username)
-      DO UPDATE SET password_hash = EXCLUDED.password_hash
+      DO UPDATE SET
+        password_hash = EXCLUDED.password_hash,
+        role = EXCLUDED.role,
+        is_active = EXCLUDED.is_active
     `;
-    console.log(`✔ Usuario "${username}" creado/actualizado.\n`);
+    console.log(`✔ Usuario "${username}" creado/actualizado (rol: ${role}, activo: ${isActive ? 'si' : 'no'}).\n`);
 
     const otro = (await question('¿Agregar otro usuario? (s/n): ')).trim().toLowerCase();
     seguir = otro === 's' || otro === 'si' || otro === 'y';

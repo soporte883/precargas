@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
   try {
     const payload = await verifyToken(token);
-    return res.status(200).json({ authenticated: true, username: payload.username });
+    return res.status(200).json({ authenticated: true, username: payload.username, role: payload.role || 'user' });
   } catch {
     return res.status(401).json({ authenticated: false });
   }
