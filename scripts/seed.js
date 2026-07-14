@@ -1,23 +1,37 @@
 /**
- * Script para crear la tabla de usuarios y agregar/actualizar usuarios.
+ * Script interactivo para crear la tabla de usuarios y agregar/actualizar usuarios.
  *
  * Uso:
- *   1. Descarga las variables de entorno de Vercel:  vercel env pull .env
- *      (o crea un .env con POSTGRES_URL y JWT_SECRET)
- *   2. Edita la lista USERS de abajo con tus usuarios y contraseñas.
- *   3. Ejecuta:  npm run seed
+ *   1. Asegúrate de tener las variables de entorno (Neon) en .env.local
+ *      (se descargan solas con `vercel env pull .env.local` o al conectar la base).
+ *   2. Ejecuta:  npm run seed
+ *   3. Escribe el usuario y la contraseña cuando se te pida. La contraseña
+ *      no se muestra en pantalla y se guarda cifrada (bcrypt).
  *
- * Las contraseñas se guardan siempre cifradas (bcrypt). Nunca se almacenan en texto plano.
+ * Así las contraseñas nunca quedan escritas en el código ni se suben a GitHub.
  */
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
+dotenv.config(); // respaldo: también carga .env si existe
+
+import readline from 'node:readline';
 import bcrypt from 'bcryptjs';
 import { sql } from '../lib/db.js';
 
-// ⬇️  EDITA AQUÍ tus usuarios. Cambia las contraseñas antes de ejecutar.
-const USERS = [
-  { username: 'admin', password: 'CambiaEstaClave123' },
-  // { username: 'maria', password: 'OtraClaveSegura456' },
-];
+function question(query, { muted = false } = {}) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+    rl._writeToOutput = function (str) {
+      if (muted && !str.includes(query)) return; // oculta lo que se escribe
+      rl.output.write(str);
+    };
+    rl.question(query, (value) => {
+      rl.close();
+      if (muted) process.stdout.write('\n');
+      resolve(value);
+    });
+  });
+}
 
 async function main() {
   console.log('Creando tabla "users" si no existe...');
@@ -29,20 +43,43 @@ async function main() {
       created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `;
+  console.log('Tabla lista.\n');
 
-  for (const user of USERS) {
-    const username = user.username.trim().toLowerCase();
-    const passwordHash = await bcrypt.hash(user.password, 10);
+  let seguir = true;
+  while (seguir) {
+    const usernameRaw = await question('Usuario: ');
+    const username = usernameRaw.trim().toLowerCase();
+    if (!username) {
+      console.log('El usuario no puede estar vacío.\n');
+      continue;
+    }
+
+    const password = await question('Contraseña: ', { muted: true });
+    if (password.length < 6) {
+      console.log('La contraseña debe tener al menos 6 caracteres.\n');
+      continue;
+    }
+    const password2 = await question('Repite la contraseña: ', { muted: true });
+    if (password !== password2) {
+      console.log('Las contraseñas no coinciden. Intenta de nuevo.\n');
+      continue;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
     await sql`
       INSERT INTO users (username, password_hash)
       VALUES (${username}, ${passwordHash})
       ON CONFLICT (username)
       DO UPDATE SET password_hash = EXCLUDED.password_hash
     `;
-    console.log(`✔ Usuario listo: ${username}`);
+    console.log(`✔ Usuario "${username}" creado/actualizado.\n`);
+
+    const otro = (await question('¿Agregar otro usuario? (s/n): ')).trim().toLowerCase();
+    seguir = otro === 's' || otro === 'si' || otro === 'y';
+    console.log('');
   }
 
-  console.log('\nListo. Usuarios creados/actualizados correctamente.');
+  console.log('Listo. Usuarios guardados correctamente.');
   process.exit(0);
 }
 
