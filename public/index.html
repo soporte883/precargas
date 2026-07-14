@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingresar · Fundación Luker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0A2A5E;
+            --secondary: #C8102E;
+            --accent: #F5A623;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --radius: 16px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            color: var(--text);
+            background: linear-gradient(135deg, #061F3E 0%, #0A2A5E 45%, #0D3168 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: "";
+            position: absolute;
+            top: -20%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(200, 16, 46, 0.25) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        body::after {
+            content: "";
+            position: absolute;
+            bottom: -25%;
+            left: -10%;
+            width: 450px;
+            height: 450px;
+            background: radial-gradient(circle, rgba(245, 166, 35, 0.18) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .card {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 400px;
+            background: #ffffff;
+            border-radius: var(--radius);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+            padding: 2.5rem 2rem;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+            margin-bottom: 1.75rem;
+        }
+
+        .logo-symbol {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, var(--secondary) 0%, #E61A3A 100%);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.9rem;
+            font-weight: 800;
+            color: white;
+            box-shadow: 0 6px 18px rgba(200, 16, 46, 0.4);
+            transform: rotate(2deg);
+        }
+
+        .brand-title { font-size: 1.15rem; font-weight: 700; color: var(--primary); }
+        .brand-sub { font-size: 0.8rem; color: var(--text-light); }
+
+        h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.35rem; color: var(--primary); }
+        .subtitle { font-size: 0.9rem; color: var(--text-light); margin-bottom: 1.75rem; }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+            color: var(--text);
+        }
+
+        .field { margin-bottom: 1.15rem; }
+
+        input {
+            width: 100%;
+            padding: 0.8rem 0.95rem;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(10, 42, 94, 0.12);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.85rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: inherit;
+            color: white;
+            cursor: pointer;
+            background: linear-gradient(135deg, var(--primary) 0%, #123a7a 100%);
+            transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(10, 42, 94, 0.3);
+        }
+
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .error {
+            display: none;
+            background: #fef2f2;
+            color: var(--secondary);
+            border: 1px solid #fecaca;
+            border-radius: 10px;
+            padding: 0.7rem 0.9rem;
+            font-size: 0.85rem;
+            margin-bottom: 1.1rem;
+        }
+
+        .error.show { display: block; }
+
+        .footer-note {
+            margin-top: 1.5rem;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="brand">
+            <div class="logo-symbol">L</div>
+            <div>
+                <div class="brand-title">Fundación Luker</div>
+                <div class="brand-sub">Comparador inteligente · Precargas</div>
+            </div>
+        </div>
+
+        <h1>Iniciar sesión</h1>
+        <p class="subtitle">Ingresa tus credenciales para acceder al comparador.</p>
+
+        <div id="error" class="error"></div>
+
+        <form id="loginForm" autocomplete="on">
+            <div class="field">
+                <label for="username">Usuario</label>
+                <input type="text" id="username" name="username" required autocomplete="username" autofocus>
+            </div>
+            <div class="field">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn" id="submitBtn">Ingresar</button>
+        </form>
+
+        <p class="footer-note">© 2025 Fundación Luker · Acceso restringido</p>
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const errorBox = document.getElementById('error');
+        const submitBtn = document.getElementById('submitBtn');
+
+        // Si ya hay sesión activa, ir directo a la app.
+        fetch('/api/me').then(r => r.json()).then(data => {
+            if (data.authenticated) window.location.href = '/app.html';
+        }).catch(() => {});
+
+        function showError(msg) {
+            errorBox.textContent = msg;
+            errorBox.classList.add('show');
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorBox.classList.remove('show');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Verificando...';
+
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    window.location.href = '/app.html';
+                } else {
+                    showError(data.error || 'No se pudo iniciar sesión.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Ingresar';
+                }
+            } catch (err) {
+                showError('Error de conexión. Intenta de nuevo.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Ingresar';
+            }
+        });
+    </script>
+</body>
+
+</html>

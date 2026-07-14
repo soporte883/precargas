@@ -1,0 +1,21 @@
+{
+  "name": "precargas",
+  "version": "2.0.0",
+  "description": "Comparador inteligente de registros con login y base de datos (Vercel + Postgres)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seed": "node scripts/seed.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "bcryptjs": "^2.4.3",
+    "jose": "^5.9.6"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.7"
+  }
+}

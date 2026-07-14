@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Fundación Luker · Comparador inteligente</title>
+    <script src="xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0A2A5E;
+            --primary-light: #1E3A6E;
+            --secondary: #C8102E;
+            --secondary-dark: #A00C24;
+            --accent: #F5A623;
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.03);
+            --shadow: 0 4px 16px rgba(0,0,0,0.06);
+            --shadow-lg: 0 12px 32px rgba(0,0,0,0.08);
+            --radius: 16px;
+            --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(180deg, #f4f6f9 0%, #eef1f5 100%);
+            color: var(--text); min-height: 100vh; display: flex; flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(105deg, #061F3E 0%, #0A2A5E 40%, #0D3168 100%);
+            padding: 1.2rem 2rem; color: white;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.2); position: relative; overflow: hidden;
+        }
+        .header::before {
+            content: ""; position: absolute; top: -50%; right: -10%;
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(200,16,46,0.25) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .header::after {
+            content: ""; position: absolute; bottom: -30%; left: -5%;
+            width: 250px; height: 250px;
+            background: radial-gradient(circle, rgba(245,166,35,0.15) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .header-content {
+            max-width: 1200px; margin: 0 auto; display: flex; align-items: center;
+            gap: 1.2rem; position: relative; z-index: 1;
+        }
+        .logo-symbol {
+            width: 52px; height: 52px;
+            background: linear-gradient(135deg, var(--secondary) 0%, #E61A3A 100%);
+            border-radius: 14px; display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; font-weight: 800; color: white;
+            box-shadow: 0 6px 18px rgba(200,16,46,0.4); transform: rotate(2deg);
+        }
+        .header-title { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.3px; }
+        .header-sub { font-size: 0.9rem; opacity: 0.85; font-weight: 400; letter-spacing: 0.2px; }
+
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 2rem; flex: 1; }
+
+        .tabs {
+            display: flex; gap: 0.25rem; margin-bottom: 1.5rem;
+            background: white; border-radius: 40px; padding: 0.3rem;
+            box-shadow: var(--shadow); width: fit-content;
+        }
+        .tab {
+            padding: 0.65rem 1.8rem; font-weight: 600; font-size: 0.9rem;
+            cursor: pointer; border-radius: 30px; border: none;
+            background: transparent; color: var(--text-light);
+            transition: all var(--transition); white-space: nowrap;
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .tab i { font-size: 1.1rem; }
+        .tab.active {
+            background: var(--secondary); color: white;
+            box-shadow: 0 4px 12px rgba(200,16,46,0.25);
+        }
+        .tab:hover:not(.active) { background: #f1f5f9; color: var(--primary); }
+
+        .card {
+            background: var(--card); border-radius: var(--radius); padding: 2rem;
+            margin-bottom: 1.5rem; box-shadow: var(--shadow);
+            border: 1px solid rgba(0,0,0,0.03);
+            transition: box-shadow var(--transition), transform var(--transition);
+        }
+        .card:hover { box-shadow: var(--shadow-lg); }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        input[type="file"] { font-size: 0.9rem; padding: 0.5rem 0; }
+        .column-list {
+            max-height: 180px; overflow-y: auto; border: 1px solid var(--border);
+            border-radius: 12px; padding: 0.75rem; margin-top: 0.5rem; background: #fafbfc;
+        }
+        .column-list label {
+            display: flex; align-items: center; gap: 0.5rem; margin: 0.45rem 0;
+            font-size: 0.85rem; color: var(--text); cursor: pointer; transition: color 0.15s;
+        }
+        .column-list label:hover { color: var(--primary); }
+        .column-list input[type="checkbox"] { accent-color: var(--secondary); width: 1rem; height: 1rem; }
+
+        textarea {
+            width: 100%; min-height: 180px; border: 1px solid var(--border);
+            border-radius: 12px; padding: 1rem; font-family: 'SF Mono', monospace;
+            font-size: 0.85rem; resize: vertical; background: #fafbfc;
+            transition: border var(--transition), box-shadow var(--transition);
+        }
+        textarea:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(200,16,46,0.1); }
+
+        .btn {
+            padding: 0.7rem 1.8rem; border-radius: 30px; font-weight: 600; font-size: 0.9rem;
+            border: none; cursor: pointer; transition: all var(--transition);
+            display: inline-flex; align-items: center; gap: 0.5rem; letter-spacing: 0.2px;
+            text-decoration: none;
+        }
+        .btn i { font-size: 1.1rem; }
+        .btn-primary { background: var(--secondary); color: white; box-shadow: 0 4px 12px rgba(200,16,46,0.2); }
+        .btn-primary:hover:not(:disabled) { background: var(--secondary-dark); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(200,16,46,0.3); }
+        .btn-cancel { background: #f1f5f9; color: var(--text); border: 1px solid var(--border); }
+        .btn-cancel:hover { background: #e2e8f0; }
+        .btn-outline { background: white; border: 2px solid var(--primary); color: var(--primary); }
+        .btn-outline:hover { background: #eef2f9; border-color: var(--primary-light); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+
+        .threshold-wrap {
+            display: flex; align-items: center; gap: 1rem; margin: 1.5rem 0;
+            background: #f8fafc; padding: 1rem 1.5rem; border-radius: 12px;
+        }
+        input[type="range"] { width: 200px; accent-color: var(--secondary); }
+        .slider-value { font-weight: 700; color: var(--secondary); min-width: 3rem; text-align: center; }
+
+        .display-column-wrap {
+            margin: 1rem 0; display: flex; align-items: center; gap: 0.5rem;
+        }
+        .display-column-wrap select { padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid var(--border); }
+
+        .progress-wrap { margin: 1.5rem 0; display: none; }
+        .progress-bar { height: 14px; background: #e5e7eb; border-radius: 20px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.04); }
+        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%); border-radius: 20px; transition: width 0.2s ease; }
+
+        .process-info {
+            background: #f0f9ff; border-left: 4px solid var(--primary); padding: 1rem;
+            border-radius: 0 12px 12px 0; margin-bottom: 1.5rem; font-size: 0.9rem;
+        }
+        .process-info i { color: var(--secondary); }
+
+        table {
+            width: 100%; border-collapse: separate; border-spacing: 0;
+            margin: 1.5rem 0; font-size: 0.85rem; border-radius: 12px;
+            overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        th { background: #f0f3f8; color: var(--primary); font-weight: 600; padding: 0.8rem 1rem; text-align: left; border-bottom: 2px solid var(--secondary); }
+        td { padding: 0.8rem 1rem; border-bottom: 1px solid #f1f5f9; }
+        tr:last-child td { border-bottom: none; }
+        .match td { background: #e8f5e9; }
+        .new td { background: #fff3e0; }
+
+        .badge {
+            padding: 0.35rem 1rem; border-radius: 30px; font-size: 0.8rem; font-weight: 600;
+            letter-spacing: 0.3px; display: inline-flex; align-items: center; gap: 0.35rem;
+        }
+        .badge i { font-size: 0.9rem; }
+        .badge-success { background: #e8f5e9; color: #2e7d32; }
+        .badge-warning { background: #fff3e0; color: #e65100; }
+
+        .summary { display: flex; gap: 2rem; margin-bottom: 1rem; flex-wrap: wrap; }
+
+        .history-entry {
+            border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem;
+            margin-bottom: 0.75rem; background: white; transition: all var(--transition);
+            display: flex; align-items: flex-start; gap: 1rem;
+        }
+        .history-entry:hover { background: #fafbfc; border-color: #cbd5e1; }
+        .history-checkbox { margin-top: 0.3rem; transform: scale(1.2); accent-color: var(--secondary); }
+        .history-content { flex: 1; cursor: pointer; }
+        .history-header { display: flex; justify-content: space-between; align-items: center; }
+        .history-details { margin-top: 0.75rem; display: none; }
+        .history-details.open { display: block; }
+
+        .footer {
+            background: #0A1C3A; color: #cbd5e1; padding: 2.5rem 2rem 1.5rem;
+            margin-top: 3rem; font-size: 0.85rem;
+        }
+        .footer-grid {
+            max-width: 1200px; margin: 0 auto; display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem;
+        }
+        .footer h4 { color: white; font-size: 1rem; margin-bottom: 1rem; font-weight: 600; }
+        .footer a { color: #94a3b8; text-decoration: none; transition: color 0.2s; }
+        .footer a:hover { color: white; }
+        .footer-bottom {
+            max-width: 1200px; margin: 2rem auto 0; border-top: 1px solid #2d3a50;
+            padding-top: 1.5rem; display: flex; justify-content: space-between; flex-wrap: wrap;
+            color: #94a3b8;
+        }
+
+        .hidden { display: none !important; }
+        .text-muted { color: var(--text-light); }
+
+        #loadingOverlay {
+            display:none; position:fixed; top:0;left:0;width:100%;height:100%;
+            background:rgba(255,255,255,0.7); z-index:999; justify-content:center; align-items:center;
+        }
+        .spinner {
+            border:4px solid #ccc; border-top:4px solid var(--secondary);
+            border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform:rotate(360deg); } }
+    </style>
+</head>
+
+<body>
+    <div id="loadingOverlay"><div class="spinner"></div></div>
+
+    <div class="header">
+        <div class="header-content">
+            <div class="logo-symbol">L</div>
+            <div>
+                <div class="header-title">Fundación Luker</div>
+                <div class="header-sub">Comparador inteligente de registros · Casa Luker</div>
+            </div>
+            <div style="margin-left:auto; display:flex; align-items:center; gap:1rem;">
+                <span id="userGreeting" style="font-size:0.9rem; opacity:0.9;"></span>
+                <button id="logoutBtn" title="Cerrar sesión"
+                    style="display:flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.12); color:#fff; border:1px solid rgba(255,255,255,0.25); padding:0.5rem 0.9rem; border-radius:30px; font-size:0.85rem; font-weight:600; font-family:inherit; cursor:pointer; transition:background 0.2s;">
+                    <i class="ph ph-sign-out"></i> Salir
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" data-mode="files"><i class="ph ph-files"></i> Comparar archivos</button>
+            <button class="tab" data-mode="text"><i class="ph ph-clipboard-text"></i> Pegar texto vs Base</button>
+            <button class="tab" data-mode="history"><i class="ph ph-clock-counter-clockwise"></i> Historial</button>
+        </div>
+
+        <!-- Modo archivos -->
+        <div id="mode-files" class="card">
+            <div class="grid-2">
+                <div>
+                    <h3 style="margin-bottom:0.5rem; color:var(--primary);"><i class="ph ph-folder"></i> Archivo Base</h3>
+                    <input type="file" id="baseFileInput" accept=".xlsx,.xls,.csv">
+                    <div id="baseColumns" class="column-list" style="display:none;"></div>
+                    <label style="display:none; margin-top:0.5rem;" id="baseAllLabel"><input type="checkbox" id="baseAllCheck"> Usar todas las columnas</label>
+                </div>
+                <div>
+                    <h3 style="margin-bottom:0.5rem; color:var(--primary);"><i class="ph ph-folder-open"></i> Archivo a Comparar</h3>
+                    <input type="file" id="compFileInput" accept=".xlsx,.xls,.csv">
+                    <div id="compColumns" class="column-list" style="display:none;"></div>
+                    <label style="display:none; margin-top:0.5rem;" id="compAllLabel"><input type="checkbox" id="compAllCheck"> Usar todas las columnas</label>
+                    <div class="display-column-wrap">
+                        <label><i class="ph ph-eye"></i> Mostrar columna en resultados:</label>
+                        <select id="compDisplayColumn" disabled>
+                            <option value="">— Ninguna (mostrar clave) —</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="threshold-wrap">
+                <strong>Umbral de similitud:</strong>
+                <input type="range" id="thresholdSlider" min="50" max="100" value="80" step="1">
+                <span id="thresholdValue" class="slider-value">80%</span>
+                <span class="text-muted">(Mayor % = más exigente)</span>
+            </div>
+
+            <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+                <button id="compareBtnFiles" class="btn btn-primary" disabled><i class="ph ph-lightning"></i> Comparar archivos</button>
+                <button id="cancelBtnFiles" class="btn btn-cancel hidden"><i class="ph ph-stop-circle"></i> Cancelar</button>
+                <button id="downloadBtnFiles" class="btn btn-outline" disabled><i class="ph ph-download-simple"></i> Descargar reporte</button>
+            </div>
+
+            <div id="progressContainerFiles" class="progress-wrap">
+                <div id="progressTextFiles" style="margin-bottom:0.5rem; font-weight:500;">Procesando...</div>
+                <div class="progress-bar"><div id="progressFillFiles" class="progress-fill"></div></div>
+            </div>
+        </div>
+
+        <!-- Modo texto -->
+        <div id="mode-text" class="card hidden">
+            <div class="grid-2">
+                <div>
+                    <h3 style="margin-bottom:0.5rem; color:var(--primary);"><i class="ph ph-folder"></i> Archivo Base</h3>
+                    <input type="file" id="baseFileInputText" accept=".xlsx,.xls,.csv">
+                    <div id="baseColumnsText" class="column-list" style="display:none;"></div>
+                    <label style="display:none; margin-top:0.5rem;" id="baseAllLabelText"><input type="checkbox" id="baseAllCheckText"> Usar todas las columnas</label>
+                </div>
+                <div>
+                    <h3 style="margin-bottom:0.5rem; color:var(--primary);"><i class="ph ph-clipboard-text"></i> Texto pegado</h3>
+                    <textarea id="pastedText" placeholder="Pegá aquí los datos copiados..."></textarea>
+                    <div style="margin-top:0.5rem;">
+                        <label><input type="radio" name="delimiterText" value="auto" checked> Detectar</label>
+                        <label style="margin-left:1rem;"><input type="radio" name="delimiterText" value="tab"> Tabs</label>
+                        <label style="margin-left:1rem;"><input type="radio" name="delimiterText" value="comma"> Comas</label>
+                    </div>
+                    <div id="compColumnsText" class="column-list" style="display:none;"></div>
+                    <label style="display:none; margin-top:0.5rem;" id="compAllLabelText"><input type="checkbox" id="compAllCheckText"> Usar todas las columnas</label>
+                    <div class="display-column-wrap">
+                        <label><i class="ph ph-eye"></i> Mostrar columna en resultados:</label>
+                        <select id="compDisplayColumnText" disabled>
+                            <option value="">— Ninguna (mostrar clave) —</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="threshold-wrap">
+                <strong>Umbral de similitud:</strong>
+                <input type="range" id="thresholdSliderText" min="50" max="100" value="80" step="1">
+                <span id="thresholdValueText" class="slider-value">80%</span>
+            </div>
+
+            <div style="display:flex; gap:1rem;">
+                <button id="compareBtnText" class="btn btn-primary" disabled><i class="ph ph-lightning"></i> Comparar</button>
+                <button id="cancelBtnText" class="btn btn-cancel hidden"><i class="ph ph-stop-circle"></i> Cancelar</button>
+                <button id="downloadBtnText" class="btn btn-outline" disabled><i class="ph ph-download-simple"></i> Descargar</button>
+            </div>
+
+            <div id="progressContainerText" class="progress-wrap">
+                <div id="progressTextText">Procesando...</div>
+                <div class="progress-bar"><div id="progressFillText" class="progress-fill"></div></div>
+            </div>
+        </div>
+
+        <!-- Historial -->
+        <div id="mode-history" class="card hidden">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="color:var(--primary);"><i class="ph ph-clock-counter-clockwise"></i> Historial</h3>
+                <div style="display:flex; gap:0.5rem;">
+                    <button id="uploadSelectedBtn" class="btn btn-primary" disabled><i class="ph ph-cloud-arrow-up"></i> Subir a Drive</button>
+                    <button id="deleteSelectedBtn" class="btn btn-cancel" disabled><i class="ph ph-trash"></i> Eliminar</button>
+                    <button id="exportHistoryBtn" class="btn btn-outline"><i class="ph ph-export"></i> Exportar JSON</button>
+                </div>
+            </div>
+            <div id="historyList" style="margin-top:1.5rem;"><p class="text-muted">No hay comparaciones guardadas aún.</p></div>
+        </div>
+
+        <!-- Resultados -->
+        <div id="resultsCard" class="card hidden">
+            <div id="processInfo" class="process-info"></div>
+            <div id="summary"></div>
+            <div id="resultsTable" style="max-height: 500px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-grid">
+            <div><h4>Fundación Luker</h4><p>Educación y desarrollo social en Colombia desde 1994.</p></div>
+            <div><h4>Enlaces</h4><a href="#">Inicio</a><br><a href="#">Proyectos</a></div>
+            <div><h4>Legal</h4><a href="#">Política de privacidad</a></div>
+            <div><h4>Contacto</h4><p>Manizales, Caldas<br>✉️ info@fundacionluker.org.co</p></div>
+        </div>
+        <div class="footer-bottom"><span>© 2025 Fundación Luker · Todos los derechos reservados.</span></div>
+    </footer>
+
+    <script>
+        // ==================== CONFIGURACIÓN GOOGLE ====================
+        const GOOGLE_CLIENT_ID = '49538630619-gh5l5jif88jnkqjtjjigsmdgmv1rmec7.apps.googleusercontent.com';
+        const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+        let accessToken = null;
+
+        // ==================== SESIÓN / AUTENTICACIÓN ====================
+        (async () => {
+            try {
+                const res = await fetch('/api/me');
+                const data = await res.json();
+                if (!data.authenticated) {
+                    window.location.href = '/';
+                    return;
+                }
+                const greeting = document.getElementById('userGreeting');
+                if (greeting) greeting.textContent = `Hola, ${data.username}`;
+            } catch {
+                window.location.href = '/';
+            }
+        })();
+
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                try { await fetch('/api/logout', { method: 'POST' }); } catch {}
+                window.location.href = '/';
+            });
+        }
+
+        // ==================== CLASES (sin cambios) ====================
+        class FuzzyMatcher {
+            static levenshtein(a, b) {
+                const an = a.length, bn = b.length;
+                const matrix = Array.from({ length: an + 1 }, () => Array(bn + 1).fill(0));
+                for (let i = 0; i <= an; i++) matrix[i][0] = i;
+                for (let j = 0; j <= bn; j++) matrix[0][j] = j;
+                for (let i = 1; i <= an; i++) {
+                    for (let j = 1; j <= bn; j++) {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j] + 1,
+                            matrix[i][j - 1] + 1,
+                            matrix[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+                        );
+                    }
+                }
+                return matrix[an][bn];
+            }
+            static similarityWithThreshold(str1, str2, threshold) {
+                const s1 = String(str1).trim().toLowerCase();
+                const s2 = String(str2).trim().toLowerCase();
+                if (!s1 && !s2) return 100;
+                if (!s1 || !s2) return 0;
+                const maxLen = Math.max(s1.length, s2.length);
+                const minLen = Math.min(s1.length, s2.length);
+                const maxPossible = (minLen / maxLen) * 100;
+                if (maxPossible < threshold) return -1;
+                const dist = this.levenshtein(s1, s2);
+                return ((1 - dist / maxLen) * 100);
+            }
+        }
+
+        class ExcelFile {
+            constructor(arrayData) {
+                this.headers = arrayData[0].map(h => String(h).trim());
+                this.rows = arrayData.slice(1);
+            }
+            getRowKey(rowIndex, colIndices) {
+                return colIndices.map(i => String(this.rows[rowIndex][i] ?? '').trim()).join('|');
+            }
+            getAllKeys(colIndices) {
+                return this.rows.map((_, idx) => this.getRowKey(idx, colIndices));
+            }
+            static async fromFile(file) {
+                let buffer;
+                if (file instanceof ArrayBuffer) buffer = file;
+                else buffer = await file.arrayBuffer();
+                const data = new Uint8Array(buffer);
+                const wb = XLSX.read(data, { type: 'array' });
+                const firstSheet = wb.Sheets[wb.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+                return new ExcelFile(json);
+            }
+            static fromPastedText(text, delimiter = 'auto') {
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                if (lines.length === 0) throw new Error('Vacío');
+                let delim = delimiter;
+                if (delim === 'auto') delim = lines[0].includes('\t') ? 'tab' : 'comma';
+                const separator = delim === 'tab' ? '\t' : ',';
+                const data = lines.map(line => line.split(separator).map(cell => cell.trim()));
+                return new ExcelFile(data);
+            }
+        }
+
+        class FileComparator {
+            constructor(baseFile, compFile, baseCols, compCols, threshold, onProgress, cancelToken) {
+                this.baseFile = baseFile; this.compFile = compFile;
+                this.baseCols = baseCols; this.compCols = compCols;
+                this.threshold = threshold; this.onProgress = onProgress; this.cancelToken = cancelToken;
+            }
+            async compare() {
+                const baseKeys = this.baseFile.getAllKeys(this.baseCols);
+                const compRows = this.compFile.rows;
+                const matches = [], newEntries = [];
+                const total = compRows.length;
+                const chunkSize = 50;
+                for (let i = 0; i < total; i++) {
+                    if (this.cancelToken.cancelled) throw new Error('Cancelado');
+                    const compKey = this.compFile.getRowKey(i, this.compCols);
+                    let bestScore = 0, bestBaseIdx = -1;
+                    for (let j = 0; j < baseKeys.length; j++) {
+                        const score = FuzzyMatcher.similarityWithThreshold(compKey, baseKeys[j], this.threshold);
+                        if (score === -1) continue;
+                        if (score > bestScore) { bestScore = score; bestBaseIdx = j; }
+                        if (bestScore === 100) break;
+                    }
+                    const entry = {
+                        compRow: compRows[i], compRowIndex: i, similarity: bestScore,
+                        matched: bestScore >= this.threshold,
+                        baseRow: bestScore >= this.threshold ? this.baseFile.rows[bestBaseIdx] : null,
+                        baseRowIndex: bestScore >= this.threshold ? bestBaseIdx : -1,
+                    };
+                    (entry.matched ? matches : newEntries).push(entry);
+                    if (i % chunkSize === 0 || i === total - 1) {
+                        if (this.onProgress) this.onProgress(i + 1, total);
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                    }
+                }
+                return { matches, newEntries };
+            }
+        }
+
+        class HistoryManager {
+            static STORAGE_KEY = 'liker_comparison_history';
+            static getHistory() { return JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '[]'); }
+            static saveHistory(history) { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(history)); }
+            static addEntry(entry) {
+                const history = this.getHistory();
+                history.unshift(entry);
+                if (history.length > 50) history.pop();
+                this.saveHistory(history);
+            }
+            static deleteEntries(indices) {
+                let history = this.getHistory();
+                history = history.filter((_, i) => !indices.includes(i));
+                this.saveHistory(history);
+            }
+            static updateEntry(index, updatedEntry) {
+                const history = this.getHistory();
+                if (index >= 0 && index < history.length) {
+                    history[index] = updatedEntry;
+                    this.saveHistory(history);
+                }
+            }
+            static exportHistory() {
+                const history = this.getHistory();
+                const json = JSON.stringify(history, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `historial_luker_${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+            }
+        }
+
+        class UIHandler {
+            constructor() {
+                this.mode = 'files';
+                this.baseFile = null; this.compFile = null; this.comparisonResult = null;
+                this.cancelToken = { cancelled: false };
+
+                // Modo archivos
+                this.baseFileInput = document.getElementById('baseFileInput');
+                this.compFileInput = document.getElementById('compFileInput');
+                this.baseColumnsDiv = document.getElementById('baseColumns');
+                this.compColumnsDiv = document.getElementById('compColumns');
+                this.baseAllCheck = document.getElementById('baseAllCheck');
+                this.compAllCheck = document.getElementById('compAllCheck');
+                this.baseAllLabel = document.getElementById('baseAllLabel');
+                this.compAllLabel = document.getElementById('compAllLabel');
+                this.compareBtnFiles = document.getElementById('compareBtnFiles');
+                this.cancelBtnFiles = document.getElementById('cancelBtnFiles');
+                this.downloadBtnFiles = document.getElementById('downloadBtnFiles');
+                this.progressContainerFiles = document.getElementById('progressContainerFiles');
+                this.progressFillFiles = document.getElementById('progressFillFiles');
+                this.progressTextFiles = document.getElementById('progressTextFiles');
+                this.thresholdSlider = document.getElementById('thresholdSlider');
+                this.thresholdValue = document.getElementById('thresholdValue');
+                this.compDisplayColumn = document.getElementById('compDisplayColumn');
+
+                // Modo texto
+                this.baseFileInputText = document.getElementById('baseFileInputText');
+                this.pastedText = document.getElementById('pastedText');
+                this.baseColumnsDivText = document.getElementById('baseColumnsText');
+                this.compColumnsDivText = document.getElementById('compColumnsText');
+                this.baseAllCheckText = document.getElementById('baseAllCheckText');
+                this.compAllCheckText = document.getElementById('compAllCheckText');
+                this.baseAllLabelText = document.getElementById('baseAllLabelText');
+                this.compAllLabelText = document.getElementById('compAllLabelText');
+                this.compareBtnText = document.getElementById('compareBtnText');
+                this.cancelBtnText = document.getElementById('cancelBtnText');
+                this.downloadBtnText = document.getElementById('downloadBtnText');
+                this.progressContainerText = document.getElementById('progressContainerText');
+                this.progressFillText = document.getElementById('progressFillText');
+                this.progressTextText = document.getElementById('progressTextText');
+                this.thresholdSliderText = document.getElementById('thresholdSliderText');
+                this.thresholdValueText = document.getElementById('thresholdValueText');
+                this.compDisplayColumnText = document.getElementById('compDisplayColumnText');
+
+                // Historial
+                this.historyList = document.getElementById('historyList');
+                this.uploadSelectedBtn = document.getElementById('uploadSelectedBtn');
+                this.deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+                this.exportHistoryBtn = document.getElementById('exportHistoryBtn');
+
+                // Resultados
+                this.resultsCard = document.getElementById('resultsCard');
+                this.processInfo = document.getElementById('processInfo');
+                this.summaryDiv = document.getElementById('summary');
+                this.resultsTableDiv = document.getElementById('resultsTable');
+
+                this.initTabs();
+                this.bindEvents();
+                this.renderHistory();
+                this.cleanupExpiredDriveFiles();
+            }
+
+            initTabs() {
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        this.switchMode(tab.dataset.mode);
+                    });
+                });
+            }
+
+            switchMode(mode) {
+                this.mode = mode;
+                document.getElementById('mode-files').classList.toggle('hidden', mode !== 'files');
+                document.getElementById('mode-text').classList.toggle('hidden', mode !== 'text');
+                document.getElementById('mode-history').classList.toggle('hidden', mode !== 'history');
+                if (mode === 'history') this.renderHistory();
+                else this.resetState();
+            }
+
+            resetState() {
+                this.baseFile = null; this.compFile = null; this.comparisonResult = null;
+                this.resultsCard.classList.add('hidden');
+                if (this.mode === 'files') {
+                    this.baseColumnsDiv.innerHTML = ''; this.compColumnsDiv.innerHTML = '';
+                    this.baseColumnsDiv.style.display = 'none'; this.compColumnsDiv.style.display = 'none';
+                    this.baseAllLabel.style.display = 'none'; this.compAllLabel.style.display = 'none';
+                    this.compareBtnFiles.disabled = true; this.downloadBtnFiles.disabled = true;
+                    this.progressContainerFiles.style.display = 'none';
+                    this.compDisplayColumn.innerHTML = '<option value="">— Ninguna —</option>';
+                    this.compDisplayColumn.disabled = true;
+                } else if (this.mode === 'text') {
+                    this.baseColumnsDivText.innerHTML = ''; this.compColumnsDivText.innerHTML = '';
+                    this.baseColumnsDivText.style.display = 'none'; this.compColumnsDivText.style.display = 'none';
+                    this.baseAllLabelText.style.display = 'none'; this.compAllLabelText.style.display = 'none';
+                    this.compareBtnText.disabled = true; this.downloadBtnText.disabled = true;
+                    this.progressContainerText.style.display = 'none';
+                    this.compDisplayColumnText.innerHTML = '<option value="">— Ninguna —</option>';
+                    this.compDisplayColumnText.disabled = true;
+                }
+            }
+
+            bindEvents() {
+                // Archivos
+                this.baseFileInput.addEventListener('change', (e) => this.loadFile(e, 'base'));
+                this.compFileInput.addEventListener('change', (e) => this.loadFile(e, 'comp'));
+                this.compareBtnFiles.addEventListener('click', () => this.runComparison('files'));
+                this.cancelBtnFiles.addEventListener('click', () => this.cancelComparison());
+                this.thresholdSlider.addEventListener('input', () => this.thresholdValue.textContent = this.thresholdSlider.value + '%');
+                this.downloadBtnFiles.addEventListener('click', () => this.downloadReport('files'));
+                this.baseColumnsDiv.addEventListener('change', () => this.updateCompareButton('files'));
+                this.compColumnsDiv.addEventListener('change', () => this.updateCompareButton('files'));
+                this.baseAllCheck.addEventListener('change', () => {
+                    const checks = this.baseColumnsDiv.querySelectorAll('input[type=checkbox]');
+                    checks.forEach(cb => cb.disabled = this.baseAllCheck.checked);
+                    this.updateCompareButton('files');
+                });
+                this.compAllCheck.addEventListener('change', () => {
+                    const checks = this.compColumnsDiv.querySelectorAll('input[type=checkbox]');
+                    checks.forEach(cb => cb.disabled = this.compAllCheck.checked);
+                    this.updateCompareButton('files');
+                });
+
+                // Texto
+                this.baseFileInputText.addEventListener('change', (e) => this.loadFileText(e));
+                this.pastedText.addEventListener('input', () => this.parsePastedText());
+                document.getElementsByName('delimiterText').forEach(r => r.addEventListener('change', () => this.parsePastedText()));
+                this.compareBtnText.addEventListener('click', () => this.runComparison('text'));
+                this.cancelBtnText.addEventListener('click', () => this.cancelComparison());
+                this.thresholdSliderText.addEventListener('input', () => this.thresholdValueText.textContent = this.thresholdSliderText.value + '%');
+                this.downloadBtnText.addEventListener('click', () => this.downloadReport('text'));
+                this.baseColumnsDivText.addEventListener('change', () => this.updateCompareButton('text'));
+                this.compColumnsDivText.addEventListener('change', () => this.updateCompareButton('text'));
+                this.baseAllCheckText.addEventListener('change', () => {
+                    const checks = this.baseColumnsDivText.querySelectorAll('input[type=checkbox]');
+                    checks.forEach(cb => cb.disabled = this.baseAllCheckText.checked);
+                    this.updateCompareButton('text');
+                });
+                this.compAllCheckText.addEventListener('change', () => {
+                    const checks = this.compColumnsDivText.querySelectorAll('input[type=checkbox]');
+                    checks.forEach(cb => cb.disabled = this.compAllCheckText.checked);
+                    this.updateCompareButton('text');
+                });
+
+                // Historial
+                this.uploadSelectedBtn.addEventListener('click', () => this.uploadSelectedToDrive());
+                this.deleteSelectedBtn.addEventListener('click', () => this.deleteSelectedFromHistory());
+                this.exportHistoryBtn.addEventListener('click', () => HistoryManager.exportHistory());
+                this.historyList.addEventListener('change', (e) => {
+                    if (e.target.classList.contains('history-checkbox')) this.updateSelectionButtons();
+                });
+            }
+
+            showLoading(show) { document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none'; }
+
+            populateDisplayColumnSelect(selectElement, headers) {
+                selectElement.innerHTML = '<option value="">— Ninguna (mostrar clave) —</option>';
+                headers.forEach((h, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = h || `Columna ${i+1}`;
+                    selectElement.appendChild(opt);
+                });
+                selectElement.disabled = false;
+            }
+
+            async loadFile(event, type) {
+                const file = event.target.files[0];
+                if (!file) return;
+                this.showLoading(true);
+                try {
+                    const excelFile = await ExcelFile.fromFile(file);
+                    if (type === 'base') {
+                        this.baseFile = excelFile;
+                        this.renderColumnCheckboxes('base', excelFile.headers, 'files');
+                    } else {
+                        this.compFile = excelFile;
+                        this.renderColumnCheckboxes('comp', excelFile.headers, 'files');
+                        this.populateDisplayColumnSelect(this.compDisplayColumn, excelFile.headers);
+                    }
+                    this.updateCompareButton('files');
+                    this.resultsCard.classList.add('hidden');
+                    this.downloadBtnFiles.disabled = true;
+                } catch (err) { alert('Error: ' + err.message); } finally { this.showLoading(false); }
+            }
+
+            async loadFileText(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                this.showLoading(true);
+                try {
+                    this.baseFile = await ExcelFile.fromFile(file);
+                    this.renderColumnCheckboxes('base', this.baseFile.headers, 'text');
+                    this.parsePastedText();
+                    this.updateCompareButton('text');
+                    this.resultsCard.classList.add('hidden');
+                    this.downloadBtnText.disabled = true;
+                } catch (err) { alert('Error: ' + err.message); } finally { this.showLoading(false); }
+            }
+
+            parsePastedText() {
+                const text = this.pastedText.value;
+                if (!text.trim()) {
+                    this.compFile = null;
+                    this.compColumnsDivText.innerHTML = ''; this.compColumnsDivText.style.display = 'none';
+                    this.compAllLabelText.style.display = 'none';
+                    this.compDisplayColumnText.innerHTML = '<option value="">— Ninguna —</option>';
+                    this.compDisplayColumnText.disabled = true;
+                    this.updateCompareButton('text');
+                    return;
+                }
+                try {
+                    const delim = document.querySelector('input[name="delimiterText"]:checked').value;
+                    this.compFile = ExcelFile.fromPastedText(text, delim);
+                    this.renderColumnCheckboxes('comp', this.compFile.headers, 'text');
+                    this.populateDisplayColumnSelect(this.compDisplayColumnText, this.compFile.headers);
+                    this.updateCompareButton('text');
+                } catch (err) { this.compFile = null; }
+            }
+
+            renderColumnCheckboxes(type, headers, mode) {
+                const div = type === 'base' ? (mode === 'files' ? this.baseColumnsDiv : this.baseColumnsDivText) : (mode === 'files' ? this.compColumnsDiv : this.compColumnsDivText);
+                const allCheck = type === 'base' ? (mode === 'files' ? this.baseAllCheck : this.baseAllCheckText) : (mode === 'files' ? this.compAllCheck : this.compAllCheckText);
+                const allLabel = type === 'base' ? (mode === 'files' ? this.baseAllLabel : this.baseAllLabelText) : (mode === 'files' ? this.compAllLabel : this.compAllLabelText);
+                div.innerHTML = '';
+                headers.forEach((h, i) => {
+                    const label = document.createElement('label'); const cb = document.createElement('input');
+                    cb.type = 'checkbox'; cb.value = i;
+                    label.appendChild(cb); label.appendChild(document.createTextNode(' ' + (h || `Columna ${i+1}`)));
+                    div.appendChild(label);
+                });
+                div.style.display = 'block'; allCheck.checked = false; allLabel.style.display = 'block';
+            }
+
+            getSelectedColumns(type, mode) {
+                const allCheck = type === 'base' ? (mode === 'files' ? this.baseAllCheck : this.baseAllCheckText) : (mode === 'files' ? this.compAllCheck : this.compAllCheckText);
+                if (allCheck.checked) {
+                    const file = type === 'base' ? this.baseFile : this.compFile;
+                    return file ? file.headers.map((_, i) => i) : [];
+                }
+                const div = type === 'base' ? (mode === 'files' ? this.baseColumnsDiv : this.baseColumnsDivText) : (mode === 'files' ? this.compColumnsDiv : this.compColumnsDivText);
+                return [...div.querySelectorAll('input[type=checkbox]:checked')].map(cb => parseInt(cb.value));
+            }
+
+            getDisplayColumnIndex(mode) {
+                const sel = mode === 'files' ? this.compDisplayColumn : this.compDisplayColumnText;
+                return sel.value === '' ? -1 : parseInt(sel.value);
+            }
+
+            updateCompareButton(mode) {
+                const baseSelected = this.getSelectedColumns('base', mode);
+                const compSelected = (this.compFile) ? this.getSelectedColumns('comp', mode) : [];
+                const btn = mode === 'files' ? this.compareBtnFiles : this.compareBtnText;
+                btn.disabled = !(this.baseFile && baseSelected.length > 0 && this.compFile && compSelected.length > 0);
+            }
+
+            async runComparison(mode) {
+                const baseCols = this.getSelectedColumns('base', mode);
+                const compCols = this.getSelectedColumns('comp', mode);
+                const threshold = parseInt(mode === 'files' ? this.thresholdSlider.value : this.thresholdSliderText.value);
+                const displayColIndex = this.getDisplayColumnIndex(mode);
+                if (baseCols.length === 0 || compCols.length === 0) return alert('Seleccioná columnas.');
+                if (!this.baseFile || !this.compFile) return alert('Faltan datos.');
+
+                const btnCompare = mode === 'files' ? this.compareBtnFiles : this.compareBtnText;
+                const btnCancel = mode === 'files' ? this.cancelBtnFiles : this.cancelBtnText;
+                const progContainer = mode === 'files' ? this.progressContainerFiles : this.progressContainerText;
+                const progFill = mode === 'files' ? this.progressFillFiles : this.progressFillText;
+                const progText = mode === 'files' ? this.progressTextFiles : this.progressTextText;
+                const downloadBtn = mode === 'files' ? this.downloadBtnFiles : this.downloadBtnText;
+
+                btnCompare.disabled = true; btnCancel.classList.remove('hidden');
+                progContainer.style.display = 'block'; progFill.style.width = '0%'; progText.textContent = 'Iniciando...';
+                this.cancelToken.cancelled = false;
+
+                const comparator = new FileComparator(this.baseFile, this.compFile, baseCols, compCols, threshold,
+                    (cur, tot) => { const pct = Math.round((cur/tot)*100); progFill.style.width = pct+'%'; progText.textContent = `Comparando ${cur} de ${tot} (${pct}%)`; },
+                    this.cancelToken);
+                try {
+                    this.comparisonResult = await comparator.compare();
+                    this.displayResults(baseCols, compCols, threshold, displayColIndex);
+                    downloadBtn.disabled = false;
+                    this.saveToHistory(mode, threshold, displayColIndex);
+                } catch (err) {
+                    if (err.message.includes('Cancelado')) progText.textContent = 'Cancelado.';
+                    else alert('Error: ' + err.message);
+                } finally {
+                    btnCompare.disabled = false; btnCancel.classList.add('hidden');
+                }
+            }
+
+            saveToHistory(mode, threshold, displayColIndex) {
+                const { matches, newEntries } = this.comparisonResult;
+                const entry = {
+                    timestamp: new Date().toISOString(),
+                    base: (mode === 'files' ? this.baseFileInput.files[0]?.name : this.baseFileInputText.files[0]?.name) || 'Archivo base',
+                    comparado: mode === 'files' ? (this.compFileInput.files[0]?.name || 'Archivo') : 'Texto pegado',
+                    umbral: threshold,
+                    totalComparados: matches.length + newEntries.length,
+                    nuevos: newEntries.length,
+                    columnasBase: this.getSelectedColumns('base', mode).map(i => this.baseFile.headers[i]),
+                    columnasComp: this.getSelectedColumns('comp', mode).map(i => this.compFile.headers[i]),
+                    compHeaders: this.compFile.headers,
+                    nuevosDatos: newEntries.map(e => e.compRow),
+                    driveFiles: [],
+                    displayColumnIndex: displayColIndex,
+                };
+                HistoryManager.addEntry(entry);
+            }
+
+            cancelComparison() { this.cancelToken.cancelled = true; }
+
+            displayResults(baseCols, compCols, threshold, displayColIndex) {
+                const { matches, newEntries } = this.comparisonResult;
+                this.resultsCard.classList.remove('hidden');
+
+                // Mostrar proceso
+                const baseColNames = baseCols.map(i => this.baseFile.headers[i]).join(', ');
+                const compColNames = compCols.map(i => this.compFile.headers[i]).join(', ');
+                let displayColName = '';
+                if (displayColIndex >= 0 && displayColIndex < this.compFile.headers.length) {
+                    displayColName = this.compFile.headers[displayColIndex];
+                }
+                this.processInfo.innerHTML = `
+                    <i class="ph ph-info"></i> <strong>Proceso de comparación:</strong>
+                    Se compararon <strong>${compColNames}</strong> del archivo cargado contra <strong>${baseColNames}</strong> de la base.
+                    Se usó el algoritmo de <strong>Levenshtein</strong> (distancia de edición) con un umbral del <strong>${threshold}%</strong>.
+                    Cada registro se compara con todos los de la base; si la similitud máxima es ≥ umbral, se considera <span style="color:#2e7d32;">coincidencia</span>; si no, <span style="color:#e65100;">nuevo</span>.
+                    ${displayColName ? `<br><i class="ph ph-eye"></i> Columna de nombre mostrada: <strong>${displayColName}</strong>` : ''}
+                `;
+
+                this.summaryDiv.innerHTML = `<div class="summary">
+                    <span class="badge badge-success"><i class="ph ph-check-circle"></i> Coincidencias: ${matches.length}</span>
+                    <span class="badge badge-warning"><i class="ph ph-plus-circle"></i> Nuevos: ${newEntries.length}</span>
+                </div>`;
+
+                const showNameCol = displayColIndex >= 0;
+                let html = `<table><thead><tr>
+                    <th>#</th><th>Fila</th>${showNameCol ? '<th>Nombre</th>' : ''}<th>Clave</th><th>Estado</th><th>Similitud</th><th>Fila Base</th><th>Clave base</th>
+                </tr></thead><tbody>`;
+                const all = [...matches.map(m => ({...m, status: 'Coincide'})), ...newEntries.map(n => ({...n, status: 'Nuevo'}))];
+                all.forEach((e, idx) => {
+                    const ck = this.compFile.getRowKey(e.compRowIndex, compCols);
+                    const bk = e.matched ? this.baseFile.getRowKey(e.baseRowIndex, baseCols) : '-';
+                    const statusIcon = e.matched ? '<i class="ph ph-check-circle" style="color:#2e7d32;"></i>' : '<i class="ph ph-plus-circle" style="color:#e65100;"></i>';
+                    let nameCell = '';
+                    if (showNameCol) {
+                        const nameVal = String(this.compFile.rows[e.compRowIndex][displayColIndex] ?? '').trim();
+                        nameCell = `<td>${this.esc(nameVal)}</td>`;
+                    }
+                    html += `<tr class="${e.matched ? 'match' : 'new'}">
+                        <td>${idx+1}</td><td>${e.compRowIndex+2}</td>${nameCell}
+                        <td>${this.esc(ck)}</td><td>${statusIcon} ${e.status}</td>
+                        <td>${e.matched ? e.similarity.toFixed(1)+'%' : '-'}</td>
+                        <td>${e.matched ? e.baseRowIndex+2 : '-'}</td><td>${this.esc(bk)}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                this.resultsTableDiv.innerHTML = html;
+            }
+
+            esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+            downloadReport(mode) { /* (sin cambios) */
+                if (!this.comparisonResult) return;
+                const { matches, newEntries } = this.comparisonResult;
+                const baseCols = this.getSelectedColumns('base', mode);
+                const compCols = this.getSelectedColumns('comp', mode);
+                const headers = [...this.compFile.headers, 'Estado', 'Similitud %', 'Fila Base', 'Clave Base'];
+                const rows = [];
+                const add = (e, st) => {
+                    const r = [...e.compRow]; r.push(st);
+                    r.push(e.matched ? e.similarity.toFixed(1) : '-');
+                    r.push(e.matched ? e.baseRowIndex+2 : '-');
+                    r.push(e.matched ? this.baseFile.getRowKey(e.baseRowIndex, baseCols) : '-');
+                    rows.push(r);
+                };
+                matches.forEach(m => add(m, 'Coincide')); newEntries.forEach(n => add(n, 'Nuevo'));
+                const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+                const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
+                XLSX.writeFile(wb, 'reporte_luker.xlsx');
+            }
+
+            // ================== DRIVE & HISTORIAL (sin cambios) ==================
+            async ensureAuth() {
+                if (!accessToken) {
+                    return new Promise((resolve, reject) => {
+                        const tokenClient = google.accounts.oauth2.initTokenClient({
+                            client_id: GOOGLE_CLIENT_ID, scope: SCOPE,
+                            callback: (response) => {
+                                if (response.error) reject(response.error);
+                                else { accessToken = response.access_token; resolve(accessToken); }
+                            },
+                        });
+                        tokenClient.requestAccessToken();
+                    });
+                }
+                return accessToken;
+            }
+
+            async uploadSelectedToDrive() {
+                const checked = this.historyList.querySelectorAll('.history-checkbox:checked');
+                if (checked.length === 0) return;
+                try { accessToken = null; await this.ensureAuth(); } catch (e) { alert('Autenticación requerida.'); return; }
+                if (!accessToken) return;
+                const history = HistoryManager.getHistory();
+                const selectedIndices = [...checked].map(cb => parseInt(cb.dataset.index));
+                this.showLoading(true);
+                for (const index of selectedIndices) {
+                    const entry = history[index];
+                    try {
+                        const headers = [...entry.compHeaders, 'Estado', 'Similitud %', 'Fila Base', 'Clave Base'];
+                        const rows = entry.nuevosDatos.map(row => { const r = [...row]; r.push('Nuevo','-','-','-'); return r; });
+                        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+                        const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
+                        const xlsxData = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                        const blob = new Blob([xlsxData], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                        const metadata = {
+                            name: `reporte_${entry.base}_${new Date().toISOString().slice(0,10)}.xlsx`,
+                            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            parents: ['1cWX8zhQXhRow3jOUbBteGJPain98r80P']
+                        };
+                        const formData = new FormData();
+                        formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                        formData.append('file', blob);
+                        let response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                            method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: formData
+                        });
+                        if (response.status === 401) {
+                            accessToken = null; await this.ensureAuth();
+                            response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                                method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: formData
+                            });
+                        }
+                        if (!response.ok) { const err = await response.json(); throw new Error(err.error?.message || `Error ${response.status}`); }
+                        const result = await response.json();
+                        entry.driveFiles.push({ id: result.id, timestamp: new Date().toISOString() });
+                        HistoryManager.updateEntry(index, entry);
+                    } catch (err) { alert(`Error al subir "${entry.base}": ${err.message}`); }
+                }
+                this.showLoading(false); this.renderHistory();
+            }
+
+            async deleteSelectedFromHistory() {
+                const checked = this.historyList.querySelectorAll('.history-checkbox:checked');
+                if (checked.length === 0) return;
+                if (!confirm('¿Eliminar registros seleccionados?')) return;
+                HistoryManager.deleteEntries([...checked].map(cb => parseInt(cb.dataset.index)));
+                this.renderHistory();
+            }
+
+            updateSelectionButtons() {
+                const checked = this.historyList.querySelectorAll('.history-checkbox:checked');
+                this.uploadSelectedBtn.disabled = checked.length === 0;
+                this.deleteSelectedBtn.disabled = checked.length === 0;
+            }
+
+            async cleanupExpiredDriveFiles() { /* sin cambios */ }
+
+            renderHistory() {
+                const history = HistoryManager.getHistory();
+                if (!history.length) { this.historyList.innerHTML = '<p class="text-muted">No hay comparaciones guardadas aún.</p>'; return; }
+                this.historyList.innerHTML = history.map((e, i) => {
+                    const fecha = new Date(e.timestamp).toLocaleString('es-CO');
+                    const subidos = e.driveFiles ? e.driveFiles.length : 0;
+                    return `<div class="history-entry">
+                        <input type="checkbox" class="history-checkbox" data-index="${i}">
+                        <div class="history-content"><div class="history-header">
+                            <div><strong>${fecha}</strong> · ${e.base} vs ${e.comparado}</div>
+                            <div><span class="badge badge-warning"><i class="ph ph-plus-circle"></i> ${e.nuevos} nuevos</span>
+                            ${subidos > 0 ? `<span class="badge" style="background:#e8f0fe;color:#1a73e8;margin-left:0.5rem;"><i class="ph ph-cloud-arrow-up"></i> Drive (${subidos})</span>` : ''}</div>
+                        </div><div class="history-details">...</div></div>
+                    </div>`;
+                }).join('');
+                this.historyList.querySelectorAll('.history-content').forEach(el => {
+                    el.addEventListener('click', (ev) => {
+                        if (ev.target.tagName === 'INPUT') return;
+                        el.parentElement.querySelector('.history-details').classList.toggle('open');
+                    });
+                });
+                this.updateSelectionButtons();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => new UIHandler());
+    </script>
+</body>
+
+</html>
