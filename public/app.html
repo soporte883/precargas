@@ -353,6 +353,10 @@
         <div id="resultsCard" class="card hidden">
             <div id="processInfo" class="process-info"></div>
             <div id="summary"></div>
+            <div id="dbSyncPanel" style="display:none; margin: 0.25rem 0 1rem; align-items:center; gap:0.7rem; flex-wrap:wrap;">
+                <button id="syncAlmeraBtn" class="btn btn-primary" type="button"><i class="ph ph-database"></i> Guardar nuevos en base de datos</button>
+                <span id="syncAlmeraStatus" class="text-muted" style="font-size:0.9rem;"></span>
+            </div>
             <div id="resultsTable" style="max-height: 500px; overflow-y: auto;"></div>
         </div>
     </div>
@@ -586,6 +590,9 @@
                 this.resultsCard = document.getElementById('resultsCard');
                 this.processInfo = document.getElementById('processInfo');
                 this.summaryDiv = document.getElementById('summary');
+                this.dbSyncPanel = document.getElementById('dbSyncPanel');
+                this.syncAlmeraBtn = document.getElementById('syncAlmeraBtn');
+                this.syncAlmeraStatus = document.getElementById('syncAlmeraStatus');
                 this.resultsTableDiv = document.getElementById('resultsTable');
 
                 this.initTabs();
@@ -616,6 +623,8 @@
             resetState() {
                 this.baseFile = null; this.compFile = null; this.comparisonResult = null;
                 this.resultsCard.classList.add('hidden');
+                this.dbSyncPanel.style.display = 'none';
+                this.syncAlmeraStatus.textContent = '';
                 if (this.mode === 'files') {
                     this.baseColumnsDiv.innerHTML = ''; this.compColumnsDiv.innerHTML = '';
                     this.baseColumnsDiv.style.display = 'none'; this.compColumnsDiv.style.display = 'none';
@@ -684,6 +693,9 @@
                 this.historyList.addEventListener('change', (e) => {
                     if (e.target.classList.contains('history-checkbox')) this.updateSelectionButtons();
                 });
+
+                // Base de datos
+                this.syncAlmeraBtn.addEventListener('click', () => this.syncNewKidsToDatabase());
             }
 
             showLoading(show) { document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none'; }
@@ -848,6 +860,11 @@
             displayResults(baseCols, compCols, threshold, displayColIndex) {
                 const { matches, newEntries } = this.comparisonResult;
                 this.resultsCard.classList.remove('hidden');
+                this.dbSyncPanel.style.display = 'flex';
+                this.syncAlmeraBtn.disabled = newEntries.length === 0;
+                this.syncAlmeraStatus.textContent = newEntries.length === 0
+                    ? 'No hay nuevos registros para guardar.'
+                    : `Listo para guardar ${newEntries.length} registro(s) nuevos.`;
 
                 // Mostrar proceso
                 const baseColNames = baseCols.map(i => this.baseFile.headers[i]).join(', ');
@@ -892,6 +909,44 @@
                 });
                 html += '</tbody></table>';
                 this.resultsTableDiv.innerHTML = html;
+            }
+
+            getComparedSourceLabel() {
+                if (this.mode === 'files') return this.compFileInput.files[0]?.name || 'archivo.xlsx';
+                return 'texto_pegado';
+            }
+
+            async syncNewKidsToDatabase() {
+                if (!this.comparisonResult) return;
+                const { newEntries } = this.comparisonResult;
+                if (!newEntries.length) {
+                    this.syncAlmeraStatus.textContent = 'No hay nuevos registros para guardar.';
+                    return;
+                }
+
+                this.syncAlmeraBtn.disabled = true;
+                this.syncAlmeraStatus.textContent = 'Guardando en base de datos...';
+
+                try {
+                    const response = await fetch('/api/almera-sync', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            headers: this.compFile.headers,
+                            rows: newEntries.map(e => e.compRow),
+                            source: this.getComparedSourceLabel(),
+                        }),
+                    });
+
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || 'No se pudo guardar en base de datos.');
+
+                    this.syncAlmeraStatus.textContent = `Guardados: ${result.inserted}. Ya existentes: ${result.duplicates}.`;
+                } catch (err) {
+                    this.syncAlmeraStatus.textContent = `Error al guardar: ${err.message}`;
+                } finally {
+                    this.syncAlmeraBtn.disabled = false;
+                }
             }
 
             esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
